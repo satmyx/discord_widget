@@ -1,0 +1,14 @@
+{
+  "name": "discord-widget-updater",
+  "version": "1.0.0",
+  "description": "Met à jour le widget Discord (Rich Presence) avec une image, un titre et une description personnalisés.",
+  "main": "update-widget.js",
+  "scripts": {
+    "start": "node update-widget.js"
+  },
+  "keywords": ["discord", "widget", "rich-presence"],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
