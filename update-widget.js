@@ -47,6 +47,12 @@ const PLAYLIST = [
     durationMs: minutes(3),
   },
   {
+    imageUrl: "https://cdn.discordapp.com/attachments/1523105747930710079/1523251837879189624/capte.png?ex=6a4b6e52&is=6a4a1cd2&hm=f931b885e4852cb56ebab24fd4944a4179e1c38730854b5604f02ef402dd465e&",
+    song_name: "Nakama, Nxxkz - LOUCURA LETAL",
+    song_description: "(Super Slowed)",
+    durationMs: minutes(2),
+  },
+  {
     imageUrl: "https://cdn.discordapp.com/attachments/1523105747930710079/1523112117677457488/sem_tempo.png?ex=6a4aec32&is=6a499ab2&hm=64d3377cb35bec41f572c33524f41cd6604b6dead8f2f6338b492c6f67015b31&",
     song_name: "SCARIONIX, chipbagov - Sem Tempo",
     song_description: "(Hardstyle Remix • Ultra Slowed)",
