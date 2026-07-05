@@ -361,7 +361,20 @@ const HTML_PAGE = `<!DOCTYPE html>
   }
   .song.active .playing-dot { display: block; }
   .song.active .dur { display: none; }
-  .status { text-align: center; font-size: 12px; color: #666; margin-top: 16px; }
+  .status { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; font-size: 11px; color: #666; }
+  .status-dot {
+    width: 10px; height: 10px; border-radius: 50%; background: #444;
+    transition: background .3s;
+  }
+  .status-dot.online {
+    background: #1db954;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .status-dot.offline { background: #ff4444; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(29, 185, 84, 0.6); }
+    50% { box-shadow: 0 0 0 8px rgba(29, 185, 84, 0); }
+  }
 </style>
 </head>
 <body>
@@ -374,7 +387,7 @@ const HTML_PAGE = `<!DOCTYPE html>
     <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
   </div>
   <div class="playlist" id="playlist"></div>
-  <div class="status" id="status">🔄 Connexion...</div>
+  <div class="status" id="status"><span class="status-dot" id="statusDot"></span><span id="statusText">Connexion...</span></div>
 </div>
 <script>
   const nowPlaying = document.getElementById('nowPlaying');
@@ -383,7 +396,8 @@ const HTML_PAGE = `<!DOCTYPE html>
   const npDesc = document.getElementById('npDesc');
   const progressFill = document.getElementById('progressFill');
   const playlistEl = document.getElementById('playlist');
-  const statusEl = document.getElementById('status');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
 
   let currentIndex = -1;
 
@@ -392,11 +406,11 @@ const HTML_PAGE = `<!DOCTYPE html>
       const res = await fetch('/api/state');
       const data = await res.json();
       render(data);
-      statusEl.textContent = '✅ Connecté';
-      statusEl.style.color = '#666';
+      statusDot.className = 'status-dot online';
+      statusText.textContent = 'Connecté';
     } catch (e) {
-      statusEl.textContent = '⚠️ Déconnecté — reconnexion...';
-      statusEl.style.color = '#ff4444';
+      statusDot.className = 'status-dot offline';
+      statusText.textContent = 'Déconnecté';
     }
   }
 
