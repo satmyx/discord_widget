@@ -1,4 +1,5 @@
 require("dotenv").config();
+const http = require("http");
 const cron = require("node-cron");
 
 const APP_ID = process.env.APP_ID;
@@ -84,6 +85,14 @@ const UPDATE_INTERVAL_MS = seconds(30);
 
 // Valeur de départ de CurVal si non précisée dans la chanson
 const DEFAULT_START_CURVAL = 0;
+
+// 🌐 État global partagé avec le serveur HTTP
+const state = {
+  index: 0,
+  totalSongs: 0,
+  currentSong: null,
+  skipTo: null,
+};
 
 async function updateWidgetImage(imageUrl, song_name, song_description, CurVal) {
   const rounded = Math.round(CurVal * 10000) / 10000;
@@ -179,30 +188,30 @@ function sleepUntil(ms, signal) {
 }
 
 async function startLoop() {
-  let index = 0;
-  let totalSongs = 0;
   let currentSignal = { aborted: false };
 
   const skipTo = (newIndex) => {
     currentSignal.aborted = true;
-    index = ((newIndex % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
+    state.index = ((newIndex % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
   };
+  state.skipTo = skipTo;
 
   const tick = () => {
     currentSignal = { aborted: false };
     const signal = currentSignal;
-    const entry = PLAYLIST[index];
+    const entry = PLAYLIST[state.index];
+    state.currentSong = { ...entry, index: state.index, progress: 0 };
 
     playSong(entry, signal).then(() => {
       if (signal.aborted) {
-        // skip → relancer pour la nouvelle chanson (index déjà mis à jour par skipTo)
         tick();
         return;
       }
-      totalSongs++;
-      index = (index + 1) % PLAYLIST.length;
-      const nextDuration = PLAYLIST[index].durationMs ?? DEFAULT_INTERVAL_MS;
-      console.log(`⏳ Prochaine chanson dans ${formatTime(nextDuration)} (total: ${totalSongs})`);
+      state.totalSongs++;
+      state.index = (state.index + 1) % PLAYLIST.length;
+      state.currentSong = null;
+      const nextDuration = PLAYLIST[state.index].durationMs ?? DEFAULT_INTERVAL_MS;
+      console.log(`⏳ Prochaine chanson dans ${formatTime(nextDuration)} (total: ${state.totalSongs})`);
       tick();
     });
   };
@@ -220,3 +229,224 @@ cron.schedule("*/5 * * * *", () => {
 });
 
 console.log("🚀 Service de mise à jour du widget Discord lancé (h24)");
+
+// ═══════════════════════════════════════════
+// 🌐 SERVEUR HTTP — Interface web de contrôle
+// ═══════════════════════════════════════════
+
+const PORT = process.env.WEB_PORT || 3456;
+
+function apiJSON(res, data, status = 200) {
+  res.writeHead(status, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+  res.end(JSON.stringify(data));
+}
+
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url, `http://localhost:${PORT}`);
+
+  // CORS preflight
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,POST", "Access-Control-Allow-Headers": "Content-Type" });
+    return res.end();
+  }
+
+  // GET /api/state — état actuel
+  if (url.pathname === "/api/state") {
+    return apiJSON(res, {
+      currentIndex: state.index,
+      totalSongs: state.totalSongs,
+      currentSong: state.currentSong,
+      playlist: PLAYLIST,
+    });
+  }
+
+  // POST /api/skip — body: { index }
+  if (url.pathname === "/api/skip" && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      try {
+        const { index } = JSON.parse(body);
+        if (typeof index !== "number" || index < 0 || index >= PLAYLIST.length) {
+          return apiJSON(res, { error: "Index invalide" }, 400);
+        }
+        state.skipTo(index);
+        console.log(`🌐 Skip → ${PLAYLIST[index].song_name}`);
+        apiJSON(res, { ok: true, skippedTo: index, song: PLAYLIST[index].song_name });
+      } catch {
+        apiJSON(res, { error: "JSON invalide" }, 400);
+      }
+    });
+    return;
+  }
+
+  // Serveur de fichier statique (page HTML)
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  res.end(HTML_PAGE);
+});
+
+server.listen(PORT, () => {
+  console.log(`🌐 Interface web dispo sur http://localhost:${PORT}`);
+});
+
+// ═══════════════════════════════════════════
+// 🎨 PAGE HTML — Mini lecteur style Spotify
+// ═══════════════════════════════════════════
+
+const HTML_PAGE = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discord Widget Controller</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #121212; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh; display: flex; justify-content: center; align-items: center;
+  }
+  .player {
+    width: 100%; max-width: 480px; background: #181818; border-radius: 16px;
+    padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  }
+  h1 { font-size: 14px; color: #1db954; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; text-align: center; }
+  .now-playing {
+    text-align: center; padding: 16px 0; border-bottom: 1px solid #282828; margin-bottom: 16px;
+  }
+  .now-playing img {
+    width: 200px; height: 200px; border-radius: 8px; object-fit: cover;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4); margin-bottom: 12px;
+  }
+  .now-playing .title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .now-playing .desc { font-size: 13px; color: #b3b3b3; }
+  .progress-bar {
+    width: 100%; height: 4px; background: #404040; border-radius: 2px;
+    margin-top: 12px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: #1db954; border-radius: 2px;
+    transition: width 1s linear; width: 0%;
+  }
+  .playlist { max-height: 380px; overflow-y: auto; }
+  .playlist::-webkit-scrollbar { width: 6px; }
+  .playlist::-webkit-scrollbar-thumb { background: #404040; border-radius: 3px; }
+  .song {
+    display: flex; align-items: center; gap: 12px; padding: 10px 8px;
+    border-radius: 8px; cursor: pointer; transition: background .2s;
+  }
+  .song:hover { background: #282828; }
+  .song.active { background: #1db95420; }
+  .song img { width: 48px; height: 48px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+  .song-info { flex: 1; min-width: 0; }
+  .song-info .name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .song-info .sub { font-size: 12px; color: #b3b3b3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .song .dur { font-size: 12px; color: #b3b3b3; flex-shrink: 0; }
+  .song.active .name { color: #1db954; }
+  .playing-dot {
+    width: 8px; height: 8px; background: #1db954; border-radius: 50%;
+    flex-shrink: 0; display: none;
+  }
+  .song.active .playing-dot { display: block; }
+  .song.active .dur { display: none; }
+  .status { text-align: center; font-size: 12px; color: #666; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="player">
+  <h1>🎮 Discord Widget</h1>
+  <div class="now-playing" id="nowPlaying">
+    <img id="npImg" src="" alt="Cover">
+    <div class="title" id="npTitle">—</div>
+    <div class="desc" id="npDesc">En attente...</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+  <div class="playlist" id="playlist"></div>
+  <div class="status" id="status">🔄 Connexion...</div>
+</div>
+<script>
+  const nowPlaying = document.getElementById('nowPlaying');
+  const npImg = document.getElementById('npImg');
+  const npTitle = document.getElementById('npTitle');
+  const npDesc = document.getElementById('npDesc');
+  const progressFill = document.getElementById('progressFill');
+  const playlistEl = document.getElementById('playlist');
+  const statusEl = document.getElementById('status');
+
+  let currentIndex = -1;
+
+  async function fetchState() {
+    try {
+      const res = await fetch('/api/state');
+      const data = await res.json();
+      render(data);
+      statusEl.textContent = '✅ Connecté';
+      statusEl.style.color = '#666';
+    } catch (e) {
+      statusEl.textContent = '⚠️ Déconnecté — reconnexion...';
+      statusEl.style.color = '#ff4444';
+    }
+  }
+
+  function render(data) {
+    currentIndex = data.currentIndex;
+    const cs = data.currentSong;
+
+    // Now playing
+    if (cs) {
+      npImg.src = cs.imageUrl;
+      npTitle.textContent = cs.song_name;
+      npDesc.textContent = cs.song_description;
+      nowPlaying.style.display = '';
+    } else {
+      nowPlaying.style.display = 'none';
+    }
+
+    // Playlist
+    playlistEl.innerHTML = data.playlist.map((s, i) => {
+      const active = i === currentIndex ? ' active' : '';
+      const dur = s.durationMs ? formatDur(s.durationMs) : '?';
+      return \`<div class="song\${active}" onclick="skipTo(\${i})">
+        <div class="playing-dot"></div>
+        <img src="\${s.imageUrl}" alt="" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect fill=%22%23333%22 width=%2248%22 height=%2248%22/></svg>'">
+        <div class="song-info">
+          <div class="name">\${s.song_name}</div>
+          <div class="sub">\${s.song_description}</div>
+        </div>
+        <div class="dur">\${dur}</div>
+      </div>\`;
+    }).join('');
+  }
+
+  async function skipTo(index) {
+    await fetch('/api/skip', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index })
+    });
+    fetchState();
+  }
+
+  function formatDur(ms) {
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  // Animation de la progress bar
+  let progress = 0;
+  setInterval(() => {
+    if (currentIndex >= 0) {
+      progress = (progress + 0.3) % 100;
+      progressFill.style.width = progress + '%';
+    } else {
+      progressFill.style.width = '0%';
+    }
+  }, 1000);
+
+  // Polling toutes les 5 secondes
+  fetchState();
+  setInterval(fetchState, 5000);
+</script>
+</body>
+</html>`;

@@ -3,6 +3,8 @@ services:
     build: .
     container_name: discord-widget-updater
     restart: unless-stopped
+    ports:
+      - "3456:3456"
     environment:
       - APP_ID=${APP_ID}
       - USER_ID=${USER_ID}
