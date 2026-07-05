@@ -43,7 +43,7 @@ const PLAYLIST = [
     durationMs: minutes(1),
   },
   {
-    imageUrl: "https://cdn.discordapp.com/attachments/1523105747930710079/1523240676156772422/montagem.png?ex=6a4b63ed&is=6a4a126d&hm=7b16d6f6e091bcb97490173c4e30b6b9f44d0fdc61c2eb064275c6c541fa6510&",
+    imageUrl: "https://cdn.discordapp.com/attachments/1523105747930710079/1523241600375848970/whybaby.png?ex=6a4b64c9&is=6a4a1349&hm=c43468d2ad62dcf7fce3c5fec64b1afe45cac7f3b32bdefc5c1b17a11fd1877c&",
     song_name: "WhyBaby? - Нравишься",
     song_description: "(Original)",
     durationMs: minutes(3),
