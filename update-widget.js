@@ -1,5 +1,5 @@
 require("dotenv").config();
-const readline = require("readline");
+const cron = require("node-cron");
 
 const APP_ID = process.env.APP_ID;
 const USER_ID = process.env.USER_ID;
@@ -201,29 +201,16 @@ async function startLoop() {
     });
   };
 
-  // ⌨️ Contrôles clavier
-  readline.emitKeypressEvents(process.stdin);
-  if (process.stdin.isTTY) process.stdin.setRawMode(true);
-  process.stdin.on("keypress", (_str, key) => {
-    if (key.name === "n" || key.name === "right") {
-      console.log(`\n⏭️  Skip → ${PLAYLIST[(index + 1) % PLAYLIST.length].song_name}`);
-      skipTo(index + 1);
-    } else if (key.name === "p" || key.name === "left") {
-      const prev = (index - 1 + PLAYLIST.length) % PLAYLIST.length;
-      console.log(`\n⏮️  Skip → ${PLAYLIST[prev].song_name}`);
-      skipTo(prev);
-    } else if (key.name === "q") {
-      console.log("\n👋 Quit");
-      process.exit(0);
-    } else if (key.name === "l") {
-      // Liste la playlist
-      console.log("\n📋 Playlist :");
-      PLAYLIST.forEach((s, i) => console.log(`  ${i === index ? "▶️" : "  "} [${i + 1}] ${s.song_name} (${formatTime(s.durationMs ?? DEFAULT_INTERVAL_MS)})`));
-    }
-  });
-
-  console.log("⌨️  Contrôles : [n] suivant  [p] précédent  [l] liste  [q] quitter\n");
+  // Démarrage automatique de la playlist (headless, pas de contrôles clavier)
   tick();
 }
 
+// 🚀 Lancement du service 24/7
 startLoop();
+
+// 🔄 Cron heartbeat optionnel — log toutes les 5 min pour confirmer que le service tourne
+cron.schedule("*/5 * * * *", () => {
+  console.log("💓 Heartbeat — le service tourne toujours");
+});
+
+console.log("🚀 Service de mise à jour du widget Discord lancé (h24)");

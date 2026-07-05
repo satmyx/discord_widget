@@ -1,0 +1,6 @@
+services:
+  discord-widget:
+    build: .
+    container_name: discord-widget-updater
+    restart: unless-stopped
+    env_file: .env
