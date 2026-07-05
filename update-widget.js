@@ -1,5 +1,6 @@
 require("dotenv").config();
 const http = require("http");
+const os = require("os");
 const cron = require("node-cron");
 
 const APP_ID = process.env.APP_ID;
@@ -286,7 +287,18 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🌐 Interface web dispo sur http://localhost:${PORT}`);
+  const ifaces = os.networkInterfaces();
+  console.log("═══════════════════════════════════════");
+  console.log(`🌐 Interface web accessible sur :`);
+  for (const [name, addrs] of Object.entries(ifaces)) {
+    for (const addr of addrs) {
+      if (addr.family === "IPv4" && !addr.internal) {
+        console.log(`   http://${addr.address}:${PORT}`);
+      }
+    }
+  }
+  console.log(`   http://localhost:${PORT}`);
+  console.log("═══════════════════════════════════════");
 });
 
 // ═══════════════════════════════════════════
