@@ -38,7 +38,7 @@ const PLAYLIST = [
   },
     {
     imageUrl: "https://cdn.discordapp.com/attachments/1523105747930710079/1523240676156772422/montagem.png?ex=6a4b63ed&is=6a4a126d&hm=7b16d6f6e091bcb97490173c4e30b6b9f44d0fdc61c2eb064275c6c541fa6510&",
-    song_name: "AKXNESHIVA, Avenxir, HamiBeats - MONTAGEM UNKNOWN",
+    song_name: "AKXNESHIVA, Avenxir - MONTAGEM UNKNOWN",
     song_description: "(Original)",
     durationMs: minutes(1),
   },
@@ -64,6 +64,12 @@ const PLAYLIST = [
     imageUrl: "https://cdn.discordapp.com/attachments/1523105747930710079/1523242397566242936/yuta.png?ex=6a4b6588&is=6a4a1408&hm=5278471d7d7b01a73d7edddab8eab00320ae60ebf5f5b3c72282a6c15f98a3e5&",
     song_name: "Scythermane, DJ LYVIXRA - BONITO ROUBO",
     song_description: "(Jumpstyle (Lykyor Remix) • Slowed & Reverb)",
+    durationMs: minutes(2),
+  },
+  {
+    imageUrl: "https://cdn.discordapp.com/attachments/1523105747930710079/1523311229903573033/prime.png?ex=6a4ba5a2&is=6a4a5422&hm=d64a97d72130ea669a54211190218ff0478dc51147cfe54de60b6b4c6be04e0a&",
+    song_name: "MIA BOYKA - PRIME",
+    song_description: "(Original)",
     durationMs: minutes(2),
   },
   {
